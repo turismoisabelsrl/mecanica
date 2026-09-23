@@ -1,4 +1,4 @@
-const CACHE = 'taller-ti-v2';
+const CACHE = 'taller-ti-v3';
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', e => {
