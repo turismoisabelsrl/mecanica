@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Taller TI — Mantenimientos</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
 <meta name="theme-color" content="#071020">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -96,6 +97,10 @@ input[type=file].lf-input{padding:9px;font-size:12px}
 .cat-x{width:26px;height:26px;border-radius:8px;border:1px solid rgba(224,68,68,.3);background:rgba(224,68,68,.1);color:#ff9090;cursor:pointer;flex-shrink:0}
 .cat-empty{color:var(--text-3);font-size:12px;padding:6px 0}
 .vacio{text-align:center;padding:40px 10px;color:var(--text-3);font-size:13px}
+.pwa-toast{position:fixed;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:200;max-width:456px;margin:0 auto;background:#0d1e38;border:1px solid var(--border-hi);border-radius:16px;padding:14px 16px;display:none;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.pwa-toast.activo{display:flex;animation:revealUp .3s both}
+.pwa-toast span{font-size:12.5px;line-height:1.4}
+.pwa-toast .btn-mini{flex-shrink:0}
 </style>
 </head>
 <body>
@@ -118,9 +123,10 @@ input[type=file].lf-input{padding:9px;font-size:12px}
 </div>
 
 <div id="app">
-  <header style="text-align:center;margin-bottom:20px;">
+  <header style="text-align:center;margin-bottom:20px;position:relative;">
     <div class="brand-title" style="font-size:22px;">Taller TI</div>
     <div class="brand-sub">Mantenimiento de Flota</div>
+    <button class="btn-mini" id="btnInstalarApp" style="display:none;position:absolute;top:0;right:0;" onclick="instalarApp()">📲 Instalar</button>
   </header>
 
   <!-- INICIO -->
@@ -185,6 +191,14 @@ input[type=file].lf-input{padding:9px;font-size:12px}
     <button class="nav-item" data-vista="talleres" onclick="cambiarVista('talleres')">🏭<span>Talleres</span></button>
     <button class="nav-item" onclick="logout()">🚪<span>Salir</span></button>
   </nav>
+
+  <div class="pwa-toast" id="pwaUpdateToast">
+    <span>Hay una versión nueva de la app.</span>
+    <button class="btn-mini" onclick="aplicarActualizacionSW()">Actualizar</button>
+  </div>
+  <div class="pwa-toast" id="pwaOfflineToast">
+    <span>📡 Sin conexión — mostrando lo último guardado.</span>
+  </div>
 </div>
 
 <!-- ===== MODAL MANTENIMIENTO (z-index 100) ===== -->
@@ -375,7 +389,7 @@ async function checkUser() {
   if (session) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
-    fetchData(); suscribirRealtime();
+    await fetchData(); suscribirRealtime();
   } else document.getElementById('login-screen').style.display = 'block';
 }
 async function handleLogin() {
@@ -874,8 +888,72 @@ function abrirDetalle(id) {
 }
 function editarDesdeDetalle() { cerrarModal('modalDetalleOverlay'); abrirModalMant(detId); }
 
-checkUser();
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+checkUser().then(manejarAccionesRapidas);
+
+/* ===== PWA: instalación, actualización y estado offline ===== */
+let swRegistration = null;
+let swRefrescando = false;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      swRegistration = await navigator.serviceWorker.register('sw.js', { scope: './' });
+      swRegistration.addEventListener('updatefound', () => {
+        const nuevo = swRegistration.installing;
+        if (!nuevo) return;
+        nuevo.addEventListener('statechange', () => {
+          // 'installed' + ya había un controller = es una actualización, no la primera instalación
+          if (nuevo.state === 'installed' && navigator.serviceWorker.controller) {
+            $('pwaUpdateToast').classList.add('activo');
+          }
+        });
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') swRegistration.update().catch(() => {});
+      });
+    } catch (e) { /* sin SW la app sigue funcionando online con normalidad */ }
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (swRefrescando) return;
+    swRefrescando = true;
+    location.reload();
+  });
+}
+function aplicarActualizacionSW() {
+  $('pwaUpdateToast').classList.remove('activo');
+  if (swRegistration && swRegistration.waiting) swRegistration.waiting.postMessage('SKIP_WAITING');
+}
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const yaInstalada = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (!yaInstalada) $('btnInstalarApp').style.display = 'inline-block';
+});
+async function instalarApp() {
+  if (!deferredInstallPrompt) return;
+  $('btnInstalarApp').style.display = 'none';
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+}
+window.addEventListener('appinstalled', () => { $('btnInstalarApp').style.display = 'none'; deferredInstallPrompt = null; });
+
+window.addEventListener('online', () => $('pwaOfflineToast').classList.remove('activo'));
+window.addEventListener('offline', () => $('pwaOfflineToast').classList.add('activo'));
+if (!navigator.onLine) $('pwaOfflineToast').classList.add('activo');
+
+/* Atajos del manifest (Nuevo mantenimiento / Vehículos) al abrir la app */
+function manejarAccionesRapidas() {
+  const params = new URLSearchParams(location.search);
+  const vista = params.get('vista');
+  const accion = params.get('accion');
+  if (!$('app') || $('app').style.display !== 'block') return; // sin sesión: no hacer nada
+  if (vista && document.getElementById('vista-' + vista)) cambiarVista(vista);
+  if (accion === 'nuevo-mantenimiento') abrirModalMant();
+  if (vista || accion) history.replaceState(null, '', location.pathname);
+}
 </script>
 </body>
 </html>

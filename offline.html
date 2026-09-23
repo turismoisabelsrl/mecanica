@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sin conexión — Taller TI</title>
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<style>
+:root{--navy:#071020;--sky:#3a8fd1;--sky-bright:#55b3f5;--text-1:rgba(255,255,255,.85);--text-3:rgba(140,175,215,.55)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--navy);color:var(--text-1);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 900px 600px at 60% -10%,#0e2555 0%,transparent 60%),radial-gradient(ellipse 600px 500px at 0% 100%,#0a1e44 0%,transparent 55%)}
+.wrap{position:relative;z-index:1;max-width:340px}
+.icono{font-size:44px;margin-bottom:14px}
+h1{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:10px}
+p{font-size:14px;color:var(--text-3);line-height:1.5;margin-bottom:26px}
+button{padding:14px 22px;border-radius:14px;border:none;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;background:linear-gradient(135deg,var(--sky),var(--sky-bright));color:#fff;cursor:pointer}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="icono">📡</div>
+    <h1>Sin conexión</h1>
+    <p>No se pudo cargar Taller TI porque no hay conexión a internet y esta página todavía no estaba guardada en el dispositivo. Conectate y volvé a intentar.</p>
+    <button onclick="location.reload()">Reintentar</button>
+  </div>
+</body>
+</html>
