@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Taller TI — Mantenimientos</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#071020">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Taller TI">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#071020;--sky:#3a8fd1;--sky-bright:#55b3f5;--green:#2cb87a;--red:#e04444;--amber:#d9a63e;--text-0:#fff;--text-1:rgba(255,255,255,.85);--text-3:rgba(140,175,215,.45);--border:rgba(255,255,255,.08);--border-hi:rgba(255,255,255,.14);--font-num:'Inter',sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text-1);min-height:100vh;position:relative}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 900px 600px at 60% -10%,#0e2555 0%,transparent 60%),radial-gradient(ellipse 600px 500px at 0% 100%,#0a1e44 0%,transparent 55%),var(--navy)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes revealUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+#splash{position:fixed;inset:0;z-index:10000;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s,visibility .5s}
+#splash.hidden{opacity:0;visibility:hidden}
+.brand-title{font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:var(--text-0)}
+.brand-sub{font-family:Syne,sans-serif;font-size:9px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--text-3);margin-top:4px}
+.spinner{width:24px;height:24px;border-radius:50%;border:2px solid rgba(85,179,245,.15);border-top-color:var(--sky-bright);animation:spin .8s linear infinite;margin-top:30px}
+#login-screen{position:relative;z-index:1;max-width:400px;margin:90px auto;padding:20px;text-align:center;display:none}
+#app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:22px 16px 110px;min-height:100vh;display:none}
+.card{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:22px;padding:20px;backdrop-filter:blur(20px)}
+.vista{display:none}.vista.activa{display:block;animation:revealUp .3s both}
+.fila-titulo{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.vista-titulo{font-family:Syne,sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)}
+.btn-nuevo{padding:9px 14px;border-radius:14px;border:none;font-family:Syne,sans-serif;font-size:11.5px;font-weight:700;background:linear-gradient(135deg,var(--sky),var(--sky-bright));color:#fff;text-transform:uppercase;cursor:pointer}
+.stats{display:flex;gap:10px;margin-top:14px}
+.stat{flex:1;border-radius:14px;padding:12px;text-align:center;background:rgba(255,255,255,.04);border:1px solid var(--border)}
+.stat b{font-family:var(--font-num);font-size:20px;display:block}
+.stat span{font-size:9px;font-family:Syne,sans-serif;font-weight:600;text-transform:uppercase;color:var(--text-3)}
+.stat.rojo b{color:#ff9090}.stat.ambar b{color:var(--amber)}.stat.verde b{color:var(--green)}
+.alerta{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;margin-bottom:8px;font-size:13px;line-height:1.4}
+.alerta.roja{background:rgba(224,68,68,.12);border:1px solid rgba(224,68,68,.3)}
+.alerta.ambar{background:rgba(217,166,62,.12);border:1px solid rgba(217,166,62,.3)}
+.alerta.azul{background:rgba(85,179,245,.1);border:1px solid rgba(85,179,245,.3)}
+.item-fila{display:flex;align-items:center;gap:12px;padding:14px 15px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--border);cursor:pointer;margin-bottom:8px}
+.mov-body{flex:1;min-width:0}
+.mov-concepto{font-size:14px;font-weight:600;color:var(--text-0)}
+.mov-meta{font-size:11.5px;color:var(--text-3);margin-top:4px}
+.mov-right{text-align:right;flex-shrink:0}
+.chip{font-family:Syne,sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;border-radius:6px;padding:3px 8px;display:inline-block}
+.chip.en_taller{background:rgba(217,166,62,.15);color:var(--amber)}
+.chip.finalizado{background:rgba(44,184,122,.15);color:var(--green)}
+.chip.cat{background:rgba(85,179,245,.14);color:var(--sky-bright);margin-top:4px}
+.segmented{display:flex;background:rgba(255,255,255,.05);border:1px solid var(--border-hi);border-radius:12px;padding:4px;gap:4px;margin-bottom:16px}
+.segmented button{flex:1;padding:9px 4px;border-radius:8px;border:none;background:transparent;color:var(--text-3);font-family:Syne,sans-serif;font-size:10.5px;font-weight:700;text-transform:uppercase;cursor:pointer}
+.segmented button.activo{background:rgba(85,179,245,.18);color:var(--sky-bright);border:1px solid rgba(85,179,245,.35)}
+.segmented.danger button.activo{background:rgba(224,68,68,.18);color:#ff9090;border-color:rgba(224,68,68,.4)}
+.filtros-row{display:flex;gap:8px;margin-bottom:14px}
+.filtros-row select{flex:1}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;max-width:480px;margin:0 auto;background:rgba(7,16,32,.85);backdrop-filter:blur(18px);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 0 10px;background:none;border:none;color:var(--text-3);cursor:pointer;font-family:Syne,sans-serif;font-size:9px;font-weight:600;text-transform:uppercase}
+.nav-item.activo{color:var(--sky-bright)}
+.modal-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.65);backdrop-filter:blur(5px)}
+.modal-overlay.activo{display:flex}
+.modal-sheet{width:100%;max-width:480px;max-height:92vh;background:#0d1e38;border:1px solid var(--border-hi);border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{padding:22px 20px 8px;display:flex;justify-content:space-between;align-items:center}
+.modal-titulo{font-family:Syne,sans-serif;font-size:17px;font-weight:700;color:var(--text-0)}
+.modal-codigo{font-family:var(--font-num);font-size:11px;color:var(--text-3)}
+.modal-body{padding:14px 20px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+.modal-foot{padding:16px 20px calc(20px + env(safe-area-inset-bottom));border-top:1px solid var(--border);display:flex;gap:10px}
+.lf-group{margin-bottom:14px}
+.lf-row{display:flex;gap:10px}.lf-row .lf-group{flex:1}
+.lf-label{display:block;font-family:Syne,sans-serif;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-bottom:7px}
+.lf-input,.lf-select,.lf-textarea{width:100%;padding:12px 14px;background:rgba(255,255,255,.06);border:1px solid var(--border-hi);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text-0);outline:none}
+.lf-textarea{resize:vertical;min-height:60px}
+.lf-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238cafd7' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+.lf-select option{background:#0d1e38}
+input[type=file].lf-input{padding:9px;font-size:12px}
+.btn-main{width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,var(--sky),var(--sky-bright));color:#fff;font-family:Syne,sans-serif;font-weight:800;text-transform:uppercase;border:none;cursor:pointer}
+.btn-guardar{flex:1;padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:Syne,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,var(--sky),#2a6ea8)}
+.btn-cancelar{flex:1;padding:14px;border-radius:12px;border:1px solid var(--border-hi);background:rgba(255,255,255,.06);color:var(--text-1);font-family:Syne,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;cursor:pointer}
+.btn-eliminar{flex:1;padding:14px;border-radius:12px;border:1px solid rgba(224,68,68,.3);background:rgba(224,68,68,.12);color:#ff9090;font-family:Syne,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;cursor:pointer}
+.detalle-row{padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.detalle-label{font-family:Syne,sans-serif;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
+.detalle-valor{font-size:15px;color:var(--text-1);white-space:pre-wrap}
+.rep-row{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.rep-row .lf-input{padding:9px 10px;font-size:13px}
+.rep-row .n{flex:2}.rep-row .c{flex:1}.rep-row .v{flex:1}
+.rep-x{width:32px;height:36px;border-radius:8px;border:1px solid rgba(224,68,68,.3);background:rgba(224,68,68,.1);color:#ff9090;cursor:pointer;flex-shrink:0}
+.total-rep{font-family:var(--font-num);font-size:14px;font-weight:700;color:var(--green);text-align:right;margin-top:4px}
+.foto-prev{max-width:100%;border-radius:12px;margin-top:8px;display:block}
+.link-archivo{color:var(--sky-bright);font-size:13px;word-break:break-all}
+.vacio{text-align:center;padding:40px 10px;color:var(--text-3);font-size:13px}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="brand-title">Taller TI</div>
+  <div class="brand-sub">Mantenimiento de Flota</div>
+  <div class="spinner"></div>
+</div>
+
+<div id="login-screen">
+  <div class="brand-title">Taller TI</div>
+  <div class="brand-sub">Mantenimiento de Flota</div>
+  <div class="card" style="width:100%;margin-top:32px;max-width:340px;">
+    <div class="lf-group"><label class="lf-label" style="text-align:left;">Email</label><input type="email" id="email" class="lf-input"></div>
+    <div class="lf-group"><label class="lf-label" style="text-align:left;">Contraseña</label><input type="password" id="password" class="lf-input"></div>
+    <button onclick="handleLogin()" class="btn-main">Entrar</button>
+    <p id="login-error" style="color:var(--red);font-size:12px;margin-top:15px;display:none;"></p>
+  </div>
+</div>
+
+<div id="app">
+  <header style="text-align:center;margin-bottom:20px;">
+    <div class="brand-title" style="font-size:22px;">Taller TI</div>
+    <div class="brand-sub">Mantenimiento de Flota</div>
+  </header>
+
+  <!-- INICIO -->
+  <section class="vista activa" id="vista-inicio">
+    <div class="card">
+      <div class="fila-titulo" style="margin-bottom:0;"><div class="vista-titulo">Resumen</div></div>
+      <div class="stats">
+        <div class="stat ambar"><b id="stEnTaller">0</b><span>En taller</span></div>
+        <div class="stat verde"><b id="stMes">0</b><span>Finalizados mes</span></div>
+        <div class="stat rojo"><b id="stGasto">$ 0</b><span>Repuestos mes</span></div>
+      </div>
+    </div>
+    <div class="fila-titulo" style="margin-top:18px;"><div class="vista-titulo">Alertas</div></div>
+    <div id="alertasContainer"></div>
+    <div class="fila-titulo" style="margin-top:18px;"><div class="vista-titulo">Últimos mantenimientos</div></div>
+    <div id="ultimosMant"></div>
+  </section>
+
+  <!-- VEHICULOS -->
+  <section class="vista" id="vista-vehiculos">
+    <div class="fila-titulo">
+      <div class="vista-titulo">Vehículos</div>
+      <button class="btn-nuevo" onclick="abrirModalVeh()">+ Nuevo</button>
+    </div>
+    <div id="vehiculosLista"></div>
+  </section>
+
+  <!-- MANTENIMIENTOS -->
+  <section class="vista" id="vista-mantenimientos">
+    <div class="fila-titulo">
+      <div class="vista-titulo">Mantenimientos</div>
+      <button class="btn-nuevo" onclick="abrirModalMant()">+ Nuevo</button>
+    </div>
+    <div class="segmented">
+      <button class="activo" data-est="todas" onclick="setFiltroEstado('todas')">Todas</button>
+      <button data-est="abiertas" onclick="setFiltroEstado('abiertas')">En taller</button>
+      <button data-est="cerradas" onclick="setFiltroEstado('cerradas')">Finalizadas</button>
+    </div>
+    <div class="filtros-row">
+      <select class="lf-select" id="filtroVeh" onchange="filtroVeh=this.value;renderMantenimientos()"><option value="">Todos los vehículos</option></select>
+      <select class="lf-select" id="filtroCat" onchange="filtroCat=this.value;renderMantenimientos()"><option value="">Todas las categorías</option></select>
+    </div>
+    <div id="mantLista"></div>
+  </section>
+
+  <nav class="bottom-nav">
+    <button class="nav-item activo" data-vista="inicio" onclick="cambiarVista('inicio')">🏠<span>Inicio</span></button>
+    <button class="nav-item" data-vista="vehiculos" onclick="cambiarVista('vehiculos')">🚐<span>Vehículos</span></button>
+    <button class="nav-item" data-vista="mantenimientos" onclick="cambiarVista('mantenimientos')">🔧<span>Mant.</span></button>
+    <button class="nav-item" onclick="logout()">🚪<span>Salir</span></button>
+  </nav>
+</div>
+
+<!-- ===== MODAL MANTENIMIENTO ===== -->
+<div class="modal-overlay" id="modalMantOverlay">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <div><div class="modal-titulo" id="mantTituloModal">Nuevo mantenimiento</div></div>
+      <div class="modal-codigo" id="mantCodigoModal"></div>
+    </div>
+    <div class="modal-body">
+      <div class="lf-row">
+        <div class="lf-group"><label class="lf-label">Empresa</label><input id="inpEmpresa" class="lf-input" list="dlEmpresas"><datalist id="dlEmpresas"></datalist></div>
+        <div class="lf-group"><label class="lf-label">Cliente</label><input id="inpCliente" class="lf-input" list="dlClientes"><datalist id="dlClientes"></datalist></div>
+      </div>
+      <div class="lf-row">
+        <div class="lf-group"><label class="lf-label">Fecha ingreso *</label><input type="date" id="inpFIngreso" class="lf-input"></div>
+        <div class="lf-group"><label class="lf-label">Fecha egreso</label><input type="date" id="inpFEgreso" class="lf-input"></div>
+      </div>
+      <div class="lf-group"><label class="lf-label">Vehículo</label>
+        <select id="selVehiculo" class="lf-select" onchange="onCambioVehiculo()"></select>
+      </div>
+      <div class="lf-row">
+        <div class="lf-group"><label class="lf-label">Interno *</label><input id="inpInterno" class="lf-input"></div>
+        <div class="lf-group"><label class="lf-label">Patente</label><input id="inpPatente" class="lf-input" style="text-transform:uppercase;"></div>
+      </div>
+      <div class="lf-row">
+        <div class="lf-group"><label class="lf-label">Tipo vehículo</label>
+          <select id="inpTVehiculo" class="lf-select"><option value="">—</option><option>Sedán</option><option>Combi</option><option>Minibús</option><option>Ómnibus</option><option>Camioneta</option><option>Otro</option></select>
+        </div>
+        <div class="lf-group"><label class="lf-label">Modelo</label><input id="inpModelo" class="lf-input"></div>
+      </div>
+      <div class="lf-row">
+        <div class="lf-group"><label class="lf-label">Tipo mantenimiento</label>
+          <select id="selTipoMant" class="lf-select" onchange="onCambioTipoMant()">
+            <option value="service">Service</option><option value="preventivo">Preventivo</option>
+            <option value="correctivo">Correctivo</option><option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="lf-group"><label class="lf-label">Kilometraje</label><input type="number" id="inpKm" class="lf-input"></div>
+      </div>
+      <div class="lf-row">
+        <div class="lf-group"><label class="lf-label">Categoría</label>
+          <select id="selCategoria" class="lf-select" onchange="onCambioCategoria()"></select>
+        </div>
+        <div class="lf-group"><label class="lf-label">Sub-categoría</label>
+          <select id="selSubCategoria" class="lf-select"></select>
+        </div>
+      </div>
+      <div class="lf-group"><label class="lf-label">¿Taller propio?</label>
+        <div class="segmented" style="margin-bottom:0;">
+          <button id="btnTallerSi" class="activo" onclick="setTallerPropio(true)">Sí</button>
+          <button id="btnTallerNo" onclick="setTallerPropio(false)">No</button>
+        </div>
+      </div>
+      <div class="lf-group" id="grpTaller" style="display:none;"><label class="lf-label">Taller (nombre)</label><input id="inpTaller" class="lf-input" placeholder="Ej: Taller Rodríguez"></div>
+      <div class="lf-group" id="grpProximo" style="display:none;">
+        <label class="lf-label">Próximo service</label>
+        <div class="lf-row">
+          <div class="lf-group" style="margin-bottom:0;"><input type="date" id="inpProxFecha" class="lf-input" title="Fecha"></div>
+          <div class="lf-group" style="margin-bottom:0;"><input type="number" id="inpProxKm" class="lf-input" placeholder="Km" title="Km"></div>
+        </div>
+      </div>
+      <div class="lf-group"><label class="lf-label">Observaciones</label><textarea id="inpObs" class="lf-textarea" placeholder="Trabajo realizado, detalles..."></textarea></div>
+      <div class="lf-group"><label class="lf-label">Foto (opcional)</label><input type="file" id="inpFoto" accept="image/*" class="lf-input" onchange="previewFoto(this)"><img id="fotoPreview" class="foto-prev" style="display:none;"></div>
+      <div class="lf-group"><label class="lf-label">Archivo (opcional)</label><input type="file" id="inpArchivo" class="lf-input" onchange="document.getElementById('archivoNombre').textContent=this.files[0]?this.files[0].name:''"><div id="archivoNombre" style="font-size:12px;color:var(--sky-bright);margin-top:5px;"></div></div>
+      <div class="lf-group"><label class="lf-label">¿Involucra repuesto?</label>
+        <div class="segmented" style="margin-bottom:0;">
+          <button id="btnRepSi" onclick="setInvolucra(true)">Sí</button>
+          <button id="btnRepNo" class="activo" onclick="setInvolucra(false)">No</button>
+        </div>
+      </div>
+      <div class="lf-group" id="grpRepuestos" style="display:none;">
+        <div id="repuestosForm"></div>
+        <button type="button" class="btn-nuevo" style="width:100%;margin-top:4px;" onclick="agregarRepuesto()">+ Agregar repuesto</button>
+        <div class="total-rep" id="totalRepForm"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancelar" onclick="cerrarModal('modalMantOverlay')">Cancelar</button>
+      <button class="btn-guardar" onclick="guardarMantenimiento()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL VEHICULO ===== -->
+<div class="modal-overlay" id="modalVehOverlay" style="z-index:150;">
+  <div class="modal-sheet">
+    <div class="modal-head"><div class="modal-titulo" id="vehTituloModal">Nuevo vehículo</div></div>
+    <div class="modal-body">
+      <div class="lf-row">
+        <div class="lf-group"><label class="lf-label">Interno *</label><input id="inpVInterno" class="lf-input"></div>
+        <div class="lf-group"><label class="lf-label">Patente</label><input id="inpVPatente" class="lf-input" style="text-transform:uppercase;"></div>
+      </div>
+      <div class="lf-row">
+        <div class="lf-group"><label class="lf-label">Tipo vehículo</label>
+          <select id="inpVTVehiculo" class="lf-select"><option value="">—</option><option>Sedán</option><option>Combi</option><option>Minibús</option><option>Ómnibus</option><option>Camioneta</option><option>Otro</option></select>
+        </div>
+        <div class="lf-group"><label class="lf-label">Modelo</label><input id="inpVModelo" class="lf-input"></div>
+      </div>
+      <div class="lf-row">
+        <div class="lf-group"><label class="lf-label">Empresa</label><input id="inpVEmpresa" class="lf-input"></div>
+        <div class="lf-group"><label class="lf-label">Km actuales</label><input type="number" id="inpVKm" class="lf-input"></div>
+      </div>
+    </div>
+    <div class="modal-foot" style="flex-wrap:wrap;">
+      <button class="btn-eliminar" id="btnEliminarVeh" style="display:none;" onclick="eliminarVehiculo()">Eliminar</button>
+      <button class="btn-cancelar" onclick="cerrarModal('modalVehOverlay')">Cancelar</button>
+      <button class="btn-guardar" onclick="guardarVehiculo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL DETALLE ===== -->
+<div class="modal-overlay" id="modalDetalleOverlay" style="z-index:150;">
+  <div class="modal-sheet">
+    <div class="modal-head"><div class="modal-titulo" id="detTitulo">Detalle</div><div class="modal-codigo" id="detCodigo"></div></div>
+    <div class="modal-body" id="detalleBody"></div>
+    <div class="modal-foot">
+      <button class="btn-eliminar" onclick="eliminarMantenimiento()">Eliminar</button>
+      <button class="btn-cancelar" onclick="editarDesdeDetalle()">Editar</button>
+      <button class="btn-guardar" onclick="cerrarModal('modalDetalleOverlay')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';   // ← completar
+const SUPABASE_KEY = 'sb_publishable_XXXX';                // ← completar
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const CAT_SUB = {
+  'Motor': ['Aceite y filtros','Correa / distribución','Refrigeración','Inyección','Otro'],
+  'Frenos': ['Pastillas','Cámaras / cintas','Compresor','Válvulas','Otro'],
+  'Suspensión y Dirección': ['Amortiguadores','Ballestas','Bolillas / bujes','Dirección','Otro'],
+  'Electricidad': ['Batería','Alternador','Motor de arranque','Luces','Otro'],
+  'Transmisión': ['Caja','Diferencial','Embrague','Otro'],
+  'Neumáticos': ['Cambio','Reparación','Balanceo','Otro'],
+  'Carrocería': ['Chapa y pintura','Cristales','Interior','Otro'],
+  'Climatización': ['Aire acondicionado','Calefacción','Otro'],
+  'Otros': ['Varios']
+};
+const TIPO_MANT_TXT = { service:'Service', preventivo:'Preventivo', correctivo:'Correctivo', otro:'Otro' };
+
+let vehiculos = [], mantenimientos = [];
+let filtroEstado = 'todas', filtroVeh = '', filtroCat = '';
+let mantEditandoId = null, vehEditandoId = null, detId = null;
+let tallerPropio = true, involucraRep = false, repuestosForm = [];
+let canal = null;
+
+/* ===== AUTH ===== */
+async function checkUser() {
+  const { data: { session } } = await _supabase.auth.getSession();
+  setTimeout(() => document.getElementById('splash').classList.add('hidden'), 600);
+  if (session) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    fetchData(); suscribirRealtime();
+  } else document.getElementById('login-screen').style.display = 'block';
+}
+async function handleLogin() {
+  const err = document.getElementById('login-error'); err.style.display = 'none';
+  const { error } = await _supabase.auth.signInWithPassword({ email: document.getElementById('email').value, password: document.getElementById('password').value });
+  if (error) { err.innerText = 'Error: ' + error.message; err.style.display = 'block'; } else checkUser();
+}
+async function logout() { desuscribirRealtime(); await _supabase.auth.signOut(); location.reload(); }
+
+/* ===== DATA + REALTIME ===== */
+let fetchToken = 0;
+async function fetchData() {
+  const t = ++fetchToken;
+  const [rV, rM] = await Promise.all([
+    _supabase.from('vehiculos').select('*').order('interno'),
+    _supabase.from('mantenimientos').select('*, repuestos(*), vehiculo:vehiculos(interno,patente,modelo,tipo_vehiculo)')
+      .order('fecha_ingreso', { ascending: false }).order('created_at', { ascending: false })
+  ]);
+  if (t !== fetchToken) return;
+  vehiculos = rV.data || []; mantenimientos = rM.data || [];
+  renderTodo();
+}
+function suscribirRealtime() {
+  if (canal) return;
+  canal = _supabase.channel('taller-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'mantenimientos' }, fetchData)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'vehiculos' }, fetchData)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'repuestos' }, fetchData)
+    .subscribe(s => { if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') canal = null; });
+}
+function desuscribirRealtime() { if (canal) { _supabase.removeChannel(canal); canal = null; } }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { if (!canal) suscribirRealtime(); fetchData(); }
+});
+
+/* ===== HELPERS ===== */
+const $ = id => document.getElementById(id);
+const esc = s => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
+const escA = s => esc(s).replace(/"/g,'&quot;');
+const fmt$ = n => '$ ' + Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+const fmtF = f => f ? f.split('-').reverse().join('/') : '—';
+function cerrarModal(id) { $(id).classList.remove('activo'); }
+function cambiarVista(v) {
+  document.querySelectorAll('.nav-item[data-vista]').forEach(b => b.classList.toggle('activo', b.dataset.vista === v));
+  document.querySelectorAll('.vista').forEach(s => s.classList.toggle('activa', s.id === 'vista-' + v));
+}
+function totalRepuestos(m) { return (m.repuestos || []).reduce((s, r) => s + (r.cantidad || 1) * (r.costo || 0), 0); }
+
+/* ===== STORAGE ===== */
+async function subirArchivo(file, carpeta) {
+  const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+  const path = `${carpeta}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const { error } = await _supabase.storage.from('taller-media').upload(path, file);
+  if (error) throw error;
+  const { data } = _supabase.storage.from('taller-media').getPublicUrl(path);
+  return data.publicUrl;
+}
+function previewFoto(input) {
+  const img = $('fotoPreview');
+  if (input.files[0]) { img.src = URL.createObjectURL(input.files[0]); img.style.display = 'block'; }
+  else img.style.display = 'none';
+}
+
+/* ===== RENDER ===== */
+function renderTodo() { renderInicio(); renderVehiculos(); renderFiltros(); renderMantenimientos(); }
+
+function renderInicio() {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const enTaller = mantenimientos.filter(m => !m.fecha_egreso);
+  const mesActual = new Date().toISOString().slice(0,7);
+  const cerradosMes = mantenimientos.filter(m => m.fecha_egreso && m.fecha_egreso.startsWith(mesActual));
+  const gastoMes = cerradosMes.reduce((s, m) => s + totalRepuestos(m), 0);
+  $('stEnTaller').textContent = enTaller.length;
+  $('stMes').textContent = cerradosMes.length;
+  $('stGasto').textContent = fmt$(gastoMes);
+
+  let html = '';
+  enTaller.forEach(m => { html += `<div class="alerta azul">🔧 <div><b>${esc(m.interno)}</b> está en taller desde ${fmtF(m.fecha_ingreso)} · ${esc(m.categoria || 'Sin categoría')}${m.taller && !m.taller_propio ? ' (' + esc(m.taller) + ')' : ''}</div></div>`; });
+  mantenimientos.forEach(m => {
+    if (m.tipo_mantenimiento === 'service' && m.proximo_servicio_fecha) {
+      const dias = Math.ceil((new Date(m.proximo_servicio_fecha + 'T00:00:00') - hoy) / 86400000);
+      if (dias <= 30) {
+        const cl = dias <= 7 ? 'roja' : 'ambar';
+        const txt = dias < 0 ? `VENCIDO hace ${-dias} días` : dias === 0 ? 'vence HOY' : `vence en ${dias} días`;
+        html += `<div class="alerta ${cl}">📅 <div><b>${esc(m.interno)}</b> · próximo service ${txt} (${fmtF(m.proximo_servicio_fecha)})</div></div>`;
+      }
+    }
+  });
+  vehiculos.forEach(v => {
+    const ultimoService = mantenimientos.find(m => m.vehiculo_id === v.id && m.tipo_mantenimiento === 'service' && m.proximo_servicio_km);
+    if (ultimoService && v.km >= ultimoService.proximo_servicio_km) {
+      html += `<div class="alerta roja">🛠️ <div><b>${esc(v.interno)}</b> superó el km de service (${ultimoService.proximo_servicio_km.toLocaleString('es-AR')} km · hoy: ${(v.km||0).toLocaleString('es-AR')} km)</div></div>`;
+    }
+  });
+  $('alertasContainer').innerHTML = html || '<div class="vacio">Sin alertas 👍</div>';
+  $('ultimosMant').innerHTML = mantenimientos.slice(0, 5).map(mantHTML).join('') || '<div class="vacio">Todavía no hay mantenimientos cargados.</div>';
+}
+
+function vehHTML(v) {
+  return `<div class="item-fila" onclick="abrirModalVeh('${v.id}')">
+    <div class="mov-body">
+      <div class="mov-concepto">Interno ${esc(v.interno)}${v.patente ? ' · ' + esc(v.patente) : ''}</div>
+      <div class="mov-meta">${esc([v.tipo_vehiculo, v.modelo].filter(Boolean).join(' '))} · ${(v.km || 0).toLocaleString('es-AR')} km${v.empresa ? ' · ' + esc(v.empresa) : ''}</div>
+    </div>
+    <div class="mov-right"><span class="chip cat">Editar</span></div>
+  </div>`;
+}
+function renderVehiculos() {
+  $('vehiculosLista').innerHTML = vehiculos.map(vehHTML).join('') || '<div class="vacio">Cargá tu primer vehículo.</div>';
+}
+
+function mantHTML(m) {
+  return `<div class="item-fila" onclick="abrirDetalle('${m.id}')">
+    <div class="mov-body">
+      <div class="mov-concepto">${esc(m.interno)}${m.patente ? ' · ' + esc(m.patente) : ''} <span style="font-weight:400;color:var(--text-3);font-size:11px;">${m.codigo}</span></div>
+      <div class="mov-meta">${TIPO_MANT_TXT[m.tipo_mantenimiento] || m.tipo_mantenimiento} · ${fmtF(m.fecha_ingreso)}${m.fecha_egreso ? ' → ' + fmtF(m.fecha_egreso) : ''}${m.taller && !m.taller_propio ? ' · ' + esc(m.taller) : ''}</div>
+      ${m.categoria ? `<span class="chip cat">${esc(m.categoria)}${m.sub_categoria ? ' / ' + esc(m.sub_categoria) : ''}</span>` : ''}
+    </div>
+    <div class="mov-right">
+      ${totalRepuestos(m) > 0 ? `<div style="font-family:var(--font-num);font-weight:700;font-size:13px;color:var(--green);">${fmt$(totalRepuestos(m))}</div>` : ''}
+      ${m.foto_url ? '📷' : ''}${m.fecha_egreso ? '<span class="chip finalizado">Listo</span>' : '<span class="chip en_taller">En taller</span>'}
+    </div>
+  </div>`;
+}
+function renderFiltros() {
+  const fv = $('filtroVeh'), fc = $('filtroCat');
+  const v1 = fv.value, c1 = fc.value;
+  fv.innerHTML = '<option value="">Todos los vehículos</option>' + vehiculos.map(v => `<option value="${v.id}">Interno ${esc(v.interno)}</option>`).join('');
+  const cats = [...new Set(mantenimientos.map(m => m.categoria).filter(Boolean))].sort();
+  fc.innerHTML = '<option value="">Todas las categorías</option>' + cats.map(c => `<option>${esc(c)}</option>`).join('');
+  fv.value = v1; fc.value = c1;
+}
+function renderMantenimientos() {
+  let lista = mantenimientos;
+  if (filtroEstado === 'abiertas') lista = lista.filter(m => !m.fecha_egreso);
+  if (filtroEstado === 'cerradas') lista = lista.filter(m => m.fecha_egreso);
+  if (filtroVeh) lista = lista.filter(m => m.vehiculo_id === filtroVeh);
+  if (filtroCat) lista = lista.filter(m => m.categoria === filtroCat);
+  $('mantLista').innerHTML = lista.map(mantHTML).join('') || '<div class="vacio">Sin resultados para este filtro.</div>';
+}
+function setFiltroEstado(e) {
+  filtroEstado = e;
+  document.querySelectorAll('#vista-mantenimientos .segmented button').forEach(b => b.classList.toggle('activo', b.dataset.est === e));
+  renderMantenimientos();
+}
+
+/* ===== FORM VEHICULO ===== */
+function abrirModalVeh(id) {
+  vehEditandoId = id || null;
+  const v = id ? vehiculos.find(x => x.id === id) : null;
+  $('vehTituloModal').textContent = v ? 'Editar vehículo' : 'Nuevo vehículo';
+  $('inpVInterno').value = v?.interno || ''; $('inpVPatente').value = v?.patente || '';
+  $('inpVTVehiculo').value = v?.tipo_vehiculo || ''; $('inpVModelo').value = v?.modelo || '';
+  $('inpVEmpresa').value = v?.empresa || ''; $('inpVKm').value = v?.km ?? '';
+  $('btnEliminarVeh').style.display = v ? 'inline-block' : 'none';
+  $('modalVehOverlay').classList.add('activo');
+}
+async function guardarVehiculo() {
+  const interno = $('inpVInterno').value.trim();
+  if (!interno) return alert('El interno es obligatorio.');
+  const val = id => $(id).value.trim();
+  const payload = { interno, patente: val('inpVPatente').toUpperCase() || null, tipo_vehiculo: val('inpVTVehiculo') || null, modelo: val('inpVModelo') || null, empresa: val('inpVEmpresa') || null, km: val('inpVKm') ? parseInt(val('inpVKm')) : 0 };
+  const { error } = vehEditandoId ? await _supabase.from('vehiculos').update(payload).eq('id', vehEditandoId) : await _supabase.from('vehiculos').insert(payload);
+  if (error) return alert('Error: ' + error.message);
+  cerrarModal('modalVehOverlay'); fetchData();
+}
+async function eliminarVehiculo() {
+  if (!confirm('¿Eliminar el vehículo? Los mantenimientos asociados quedan con datos "en papel" pero desvinculados.')) return;
+  await _supabase.from('vehiculos').delete().eq('id', vehEditandoId);
+  cerrarModal('modalVehOverlay'); fetchData();
+}
+
+/* ===== FORM MANTENIMIENTO ===== */
+function poblarCategorias(sel) {
+  $('selCategoria').innerHTML = '<option value="">—</option>' + Object.keys(CAT_SUB).map(c => `<option>${c}</option>`).join('');
+  onCambioCategoria();
+  if (sel) { $('selCategoria').value = sel; onCambioCategoria(); $('selSubCategoria').value = sel; }
+}
+function onCambioCategoria() {
+  const subs = CAT_SUB[$('selCategoria').value] || [];
+  $('selSubCategoria').innerHTML = '<option value="">—</option>' + subs.map(s => `<option>${s}</option>`).join('');
+}
+function onCambioVehiculo() {
+  const v = vehiculos.find(x => x.id === $('selVehiculo').value);
+  $('inpInterno').value = v?.interno || ''; $('inpPatente').value = v?.patente || '';
+  $('inpTVehiculo').value = v?.tipo_vehiculo || ''; $('inpModelo').value = v?.modelo || '';
+}
+function onCambioTipoMant() { $('grpProximo').style.display = $('selTipoMant').value === 'service' ? 'block' : 'none'; }
+function setTallerPropio(v) {
+  tallerPropio = v;
+  $('btnTallerSi').classList.toggle('activo', v); $('btnTallerNo').classList.toggle('activo', !v);
+  $('grpTaller').style.display = v ? 'none' : 'block';
+}
+function setInvolucra(v) {
+  involucraRep = v;
+  $('btnRepSi').classList.toggle('activo', v); $('btnRepNo').classList.toggle('activo', !v);
+  $('grpRepuestos').style.display = v ? 'block' : 'none';
+}
+function agregarRepuesto() { repuestosForm.push({ nombre: '', cantidad: 1, costo: null }); renderRepuestosForm(); }
+function renderRepuestosForm() {
+  $('repuestosForm').innerHTML = repuestosForm.map((r, i) => `<div class="rep-row">
+    <input class="lf-input n" placeholder="Repuesto" value="${escA(r.nombre)}" oninput="repuestosForm[${i}].nombre=this.value">
+    <input class="lf-input c" type="number" placeholder="Cant" value="${r.cantidad ?? 1}" oninput="repuestosForm[${i}].cantidad=Number(this.value);actualizarTotalForm()">
+    <input class="lf-input v" type="number" step="any" placeholder="Costo" value="${r.costo ?? ''}" oninput="repuestosForm[${i}].costo=Number(this.value);actualizarTotalForm()">
+    <button type="button" class="rep-x" onclick="repuestosForm.splice(${i},1);renderRepuestosForm()">✕</button>
+  </div>`).join('');
+  actualizarTotalForm();
+}
+function actualizarTotalForm() {
+  const t = repuestosForm.reduce((s, r) => s + (r.cantidad || 0) * (r.costo || 0), 0);
+  $('totalRepForm').textContent = t > 0 ? 'Total: ' + fmt$(t) : '';
+}
+function abrirModalMant(id) {
+  mantEditandoId = id || null;
+  const m = id ? mantenimientos.find(x => x.id === id) : null;
+  $('mantTituloModal').textContent = m ? 'Editar mantenimiento' : 'Nuevo mantenimiento';
+  $('mantCodigoModal').textContent = m ? m.codigo : 'Se asignará M-XXXX';
+  // datalists de empresa/cliente con valores usados
+  const emps = [...new Set(mantenimientos.map(x => x.empresa).filter(Boolean))];
+  const clis = [...new Set(mantenimientos.map(x => x.cliente).filter(Boolean))];
+  $('dlEmpresas').innerHTML = emps.map(e => `<option value="${escA(e)}">`).join('');
+  $('dlClientes').innerHTML = clis.map(c => `<option value="${escA(c)}">`).join('');
+  $('selVehiculo').innerHTML = '<option value="">— Carga manual —</option>' + vehiculos.map(v => `<option value="${v.id}">Interno ${esc(v.interno)}${v.patente ? ' · ' + esc(v.patente) : ''}</option>`).join('');
+  $('inpFIngreso').value = m?.fecha_ingreso || new Date().toISOString().slice(0,10);
+  $('inpFEgreso').value = m?.fecha_egreso || '';
+  $('selVehiculo').value = m?.vehiculo_id || '';
+  $('inpInterno').value = m?.interno || ''; $('inpPatente').value = m?.patente || '';
+  $('inpTVehiculo').value = m?.tipo_vehiculo || ''; $('inpModelo').value = m?.modelo || '';
+  $('selTipoMant').value = m?.tipo_mantenimiento || 'service';
+  $('inpKm').value = m?.kilometraje ?? '';
+  poblarCategorias(m?.categoria); $('selSubCategoria').value = m?.sub_categoria || '';
+  setTallerPropio(m ? m.taller_propio !== false : true);
+  $('inpTaller').value = m?.taller || '';
+  $('inpProxFecha').value = m?.proximo_servicio_fecha || ''; $('inpProxKm').value = m?.proximo_servicio_km ?? '';
+  onCambioTipoMant();
+  $('inpObs').value = m?.observaciones || '';
+  $('inpFoto').value = ''; $('inpArchivo').value = '';
+  const fp = $('fotoPreview');
+  if (m?.foto_url) { fp.src = m.foto_url; fp.style.display = 'block'; } else fp.style.display = 'none';
+  $('archivoNombre').textContent = m?.archivo_url ? 'Archivo cargado ✓ (se reemplaza si subís uno nuevo)' : '';
+  setInvolucra(!!(m && (m.repuestos || []).length));
+  repuestosForm = m ? (m.repuestos || []).map(r => ({ nombre: r.nombre, cantidad: r.cantidad, costo: r.costo })) : [];
+  renderRepuestosForm();
+  $('modalMantOverlay').classList.add('activo');
+}
+
+async function guardarMantenimiento() {
+  const interno = $('inpInterno').value.trim();
+  if (!interno) return alert('El interno del vehículo es obligatorio.');
+  const val = id => $(id).value.trim();
+  const btnGuardar = document.querySelector('#modalMantOverlay .btn-guardar');
+  btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...';
+  try {
+    const payload = {
+      empresa: val('inpEmpresa') || null, cliente: val('inpCliente') || null,
+      fecha_ingreso: $('inpFIngreso').value, fecha_egreso: $('inpFEgreso').value || null,
+      vehiculo_id: $('selVehiculo').value || null,
+      interno, patente: val('inpPatente').toUpperCase() || null,
+      tipo_vehiculo: $('inpTVehiculo').value || null, modelo: val('inpModelo') || null,
+      tipo_mantenimiento: $('selTipoMant').value,
+      categoria: $('selCategoria').value || null, sub_categoria: $('selSubCategoria').value || null,
+      taller_propio: tallerPropio, taller: !tallerPropio ? val('inpTaller') || null : null,
+      kilometraje: $('inpKm').value ? parseInt($('inpKm').value) : null,
+      proximo_servicio_fecha: $('selTipoMant') === null ? null : ($('selTipoMant').value === 'service' ? $('inpProxFecha').value || null : null),
+      proximo_servicio_km: $('selTipoMant').value === 'service' ? ($('inpProxKm').value ? parseInt($('inpProxKm').value) : null) : null,
+      observaciones: val('inpObs') || null
+    };
+    // Archivos nuevos
+    if ($('inpFoto').files[0]) payload.foto_url = await subirArchivo($('inpFoto').files[0], 'fotos');
+    if ($('inpArchivo').files[0]) payload.archivo_url = await subirArchivo($('inpArchivo').files[0], 'archivos');
+
+    let mantId = mantEditandoId;
+    if (mantEditandoId) {
+      const { error } = await _supabase.from('mantenimientos').update(payload).eq('id', mantEditandoId);
+      if (error) throw error;
+    } else {
+      const { data, error } = await _supabase.from('mantenimientos').insert(payload).select('id');
+      if (error) throw error;
+      mantId = data[0].id;
+    }
+    // Repuestos: reemplazo completo
+    await _supabase.from('repuestos').delete().eq('mantenimiento_id', mantId);
+    if (involucraRep && repuestosForm.length) {
+      const filas = repuestosForm.filter(r => r.nombre.trim()).map(r => ({ mantenimiento_id: mantId, nombre: r.nombre.trim(), cantidad: r.cantidad || 1, costo: r.costo || 0 }));
+      if (filas.length) { const { error } = await _supabase.from('repuestos').insert(filas); if (error) throw error; }
+    }
+    // Actualizar km del vehículo si aplica
+    if (payload.vehiculo_id && payload.kilometraje) {
+      const v = vehiculos.find(x => x.id === payload.vehiculo_id);
+      if (v && payload.kilometraje > (v.km || 0)) await _supabase.from('vehiculos').update({ km: payload.kilometraje }).eq('id', v.id);
+    }
+    cerrarModal('modalMantOverlay'); fetchData();
+  } catch (e) { alert('Error: ' + e.message); }
+  finally { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; }
+}
+
+async function eliminarMantenimiento() {
+  if (!confirm('¿Eliminar este mantenimiento y sus repuestos?')) return;
+  await _supabase.from('mantenimientos').delete().eq('id', detId);
+  cerrarModal('modalDetalleOverlay'); fetchData();
+}
+
+/* ===== DETALLE ===== */
+function abrirDetalle(id) {
+  detId = id;
+  const m = mantenimientos.find(x => x.id === id); if (!m) return;
+  const row = (l, v) => v ? `<div class="detalle-row"><div class="detalle-label">${l}</div><div class="detalle-valor">${v}</div></div>` : '';
+  const reps = m.repuestos || [];
+  const total = totalRepuestos(m);
+  $('detTitulo').textContent = `${TIPO_MANT_TXT[m.tipo_mantenimiento] || m.tipo_mantenimiento} · ${esc(m.interno)}`;
+  $('detCodigo').textContent = m.codigo;
+  $('detalleBody').innerHTML = `
+    ${row('Empresa / Cliente', esc([m.empresa, m.cliente].filter(Boolean).join(' / ')))}
+    ${row('Período', `${fmtF(m.fecha_ingreso)} → ${m.fecha_egreso ? fmtF(m.fecha_egreso) : 'aún en taller'}`)}
+    ${row('Vehículo', `${esc(m.interno)}${m.patente ? ' · ' + esc(m.patente) : ''}${m.tipo_vehiculo ? ' · ' + esc(m.tipo_vehiculo) : ''}${m.modelo ? ' · ' + esc(m.modelo) : ''}`)}
+    ${row('Kilometraje', m.kilometraje ? m.kilometraje.toLocaleString('es-AR') + ' km' : '')}
+    ${row('Categoría', esc([m.categoria, m.sub_categoria].filter(Boolean).join(' / ')))}
+    ${row('Taller', m.taller_propio ? 'Taller propio' : esc(m.taller || 'Externo'))}
+    ${row('Próximo service', m.proximo_servicio_fecha || m.proximo_servicio_km ? `${m.proximo_servicio_fecha ? fmtF(m.proximo_servicio_fecha) : ''}${m.proximo_servicio_km ? ' · ' + m.proximo_servicio_km.toLocaleString('es-AR') + ' km' : ''}` : '')}
+    ${row('Observaciones', esc(m.observaciones))}
+    ${reps.length ? `<div class="detalle-row"><div class="detalle-label">Repuestos</div>${reps.map(r => `<div class="detalle-valor" style="font-size:13.5px;">• ${esc(r.nombre)} × ${r.cantidad} — ${fmt$((r.cantidad || 1) * (r.costo || 0))}</div>`).join('')}<div class="total-rep">Total: ${fmt$(total)}</div></div>` : ''}
+    ${m.foto_url ? `<div class="detalle-row"><div class="detalle-label">Foto</div><a href="${m.foto_url}" target="_blank"><img src="${m.foto_url}" class="foto-prev"></a></div>` : ''}
+    ${m.archivo_url ? `<div class="detalle-row"><div class="detalle-label">Archivo</div><a class="link-archivo" href="${m.archivo_url}" target="_blank">Ver archivo adjunto →</a></div>` : ''}`;
+  $('modalDetalleOverlay').classList.add('activo');
+}
+function editarDesdeDetalle() { cerrarModal('modalDetalleOverlay'); abrirModalMant(detId); }
+
+checkUser();
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</body>
+</html>
